@@ -4,6 +4,7 @@ import javax.sound.midi.*;
 import java.util.*;
 import java.awt.event.*;
 import java.awt.Color;
+import java.io.*;
 
 public class BeatMaker {
 	
@@ -13,6 +14,7 @@ public class BeatMaker {
 	Track sciezka;
 	String[] nazwyInstrumentow = {"Bass Drum", "Closed Hi-Hat", "Open Hi-Hat","Acoustic Snare","Crash Cymbal", "Hand Clap", "High Tom", "Hi Bongo", "Maracas","Whistle", "Low Conga", "Cowbell", "Vibraslap", "Low-mid Tom","High Agogo", "Open Hi Conga"};
 	int[] instrumenty = {35,42,46,38,49,39,50,60,70,72,64,56,58,47,67,63}; 
+	private JFrame ramka;
 	
 	public static void main(String[] args) {
 		BeatMaker gui = new BeatMaker();
@@ -22,19 +24,16 @@ public class BeatMaker {
 	
 	public void tworzGUI() {
 	
-		JFrame ramka = new JFrame("BeatMaker");
+		ramka = new JFrame("BeatMaker");
 		ramka.setVisible(true);
 		ramka.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	
-		BorderLayout uklad = new BorderLayout(); //??????????????????????????????????????????????????
+		BorderLayout uklad = new BorderLayout(); 
 		JPanel pane = new JPanel(uklad);
 		pane.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
-		//pane.setBackground(Color.black);
-		
 		
 	
-	
-		listaPolWyboru = new ArrayList<JCheckBox>(); //?????????????????????????????
+		listaPolWyboru = new ArrayList<JCheckBox>(); 
 		Box obszarPrzyciskow = new Box(BoxLayout.Y_AXIS);
 		Box obszarNazw = new Box(BoxLayout.Y_AXIS);
 		for (int i=0; i<16; i++) {
@@ -49,10 +48,8 @@ public class BeatMaker {
 			c.setSelected(false);
 			listaPolWyboru.add(c);
 			panelGlowny.add(c);
-			//c.setBackground(Color.black);
-	
 		}
-		//panelGlowny.setBackground(Color.black);
+
 	
 		//Buttons
 		JButton start = new JButton("Start");
@@ -63,7 +60,11 @@ public class BeatMaker {
 		szybciej.addActionListener(new szybciejListener());
 		JButton wolniej = new JButton("Wolniej");
 		wolniej.addActionListener(new wolniejListener());
-
+		JButton zapisz = new JButton("Zapisz");
+		zapisz.addActionListener(new zapiszListener());
+		JButton odtworz = new JButton("Wczytaj");
+		odtworz.addActionListener(new odtworzListener());
+		
 		//adding to pane
 		pane.add(BorderLayout.CENTER, panelGlowny);
 		pane.add(BorderLayout.EAST, obszarPrzyciskow);
@@ -74,6 +75,8 @@ public class BeatMaker {
 		obszarPrzyciskow.add(stop, BorderLayout.EAST);
 		obszarPrzyciskow.add(szybciej, BorderLayout.EAST);
 		obszarPrzyciskow.add(wolniej, BorderLayout.EAST);
+		obszarPrzyciskow.add(zapisz, BorderLayout.EAST);
+		obszarPrzyciskow.add(odtworz, BorderLayout.EAST);
 	
 		
 		konfigurujMidi();
@@ -81,9 +84,6 @@ public class BeatMaker {
 		ramka.setBounds(50,50,300,300);
 		ramka.pack();
 		}
-		
-
-	
 		
 		
 		public void konfigurujMidi() {  //Configuration of MIDI
@@ -120,7 +120,7 @@ public class BeatMaker {
 			sciezka.add(tworzZdarzenie(192,9,1,0,15));
 			try {			
 				sekwenser.setSequence(sekwencja);
-				sekwenser.setLoopCount(sekwenser.LOOP_CONTINUOUSLY); //number of loops (infinit)
+				sekwenser.setLoopCount(sekwenser.LOOP_CONTINUOUSLY); //number of loops (infinity)
 				sekwenser.start();
 				sekwenser.setTempoInBPM(120);
 				} catch(Exception e) { 
@@ -175,6 +175,63 @@ public class BeatMaker {
 				sekwenser.setTempoFactor((float)(wspTempa * .97)); 
 		}
 		}
-}
+		
+	
+		JFileChooser dialogFile = new JFileChooser();
+		
+		class zapiszListener implements ActionListener {
+			public void actionPerformed(ActionEvent e){	
+			dialogFile.showSaveDialog(ramka);
+			zapiszPlik(dialogFile.getSelectedFile());
+			}
+		}
+		private void zapiszPlik(File plik){
+				boolean[] stanyPol = new boolean[256];
+				for(int i = 0; i < 256; i++){
+					JCheckBox pole = (JCheckBox) listaPolWyboru.get(i);
+					if (pole.isSelected()){
+						stanyPol[i] = true;
+					}
+				}
+				try{
+					FileOutputStream strumienPlk = new FileOutputStream(plik);
+					ObjectOutputStream os = new ObjectOutputStream(strumienPlk);
+					os.writeObject(stanyPol);
+				}catch(Exception ex){
+					ex.printStackTrace();
+				}
+		}
+		
+		
+		class odtworzListener implements ActionListener{
+			public void actionPerformed(ActionEvent e){
+			dialogFile.showOpenDialog(ramka);
+			odtworzPlik(dialogFile.getSelectedFile());
+			}
+		}
+		private void odtworzPlik(File plik){
+		
+			boolean[] stanyPol = null;
+				try{
+					FileInputStream plikDanych = new FileInputStream(plik);
+					ObjectInputStream is = new ObjectInputStream(plikDanych);
+					stanyPol = (boolean[]) is.readObject(); //readObject->object (array of bloolean from file)
+				} catch(Exception ex) {
+					ex.printStackTrace();
+				}
+				for(int i = 0; i <256; i++){
+					JCheckBox pole = (JCheckBox) listaPolWyboru.get(i);
+					if(stanyPol[i]){
+						pole.setSelected(true);
+					} else {
+						pole.setSelected(false);
+					}
+				}
+				sekwenser.stop();
+				tracks();
+		}
+		
+	}
+
 
 
